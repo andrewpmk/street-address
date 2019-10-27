@@ -1194,207 +1194,207 @@ class StreetAddress():
             address_parts = {
                 'country': address_split[0]
             }
-        if tagged_address == ["TEXT", "STREET_ABBREV_SUFFIX"]:
-            address_parts = {
-                'street_name': address_split[0],
-                'street_type': address_split[1]
-            }
-        if tagged_address == ["TEXT", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"]:
-            address_parts = {
-                'street_name': address_split[0],
-                'street_type': address_split[1],
-                'street_direction_suffix': address_split[2]
-            }
-            return address_parts
-        if tagged_address == ["STREET_DIRECTION", "TEXT", "STREET_ABBREV_SUFFIX"]:
-            address_parts = {
-                'street_direction_prefix': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'street_direction_suffix': address_split[3]
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2]
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'street_direction_suffix': address_split[3]
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET_DIRECTION", "STREET", "STREET_ABBREV_SUFFIX"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_direction_prefix': address_split[1],
-                'street_name': address_split[2],
-                'street_type': address_split[3]
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "PROVINCE CITY", "POSTAL_CODE_FIRST", "POSTAL_CODE_SECOND"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'city': address_split[3],
-                'province': address_split[4],
-                'postal_code': address_split[5] + " " + address_split[6],
-                'country': 'CA' # Implied
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'city': address_split[3],
-                'state': address_split[4],
-                'country': 'US' # Implied
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "PROVINCE"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'city': address_split[3],
-                'province': address_split[4],
-                'country': 'CA' # Implied
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'city': address_split[3],
-                'state': address_split[4],
-                'zip_code': address_split[5],
-                'country': 'US' # Implied
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE4"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'city': address_split[3],
-                'state': address_split[4],
-                'zip_code': address_split[5],
-                'country': 'US' # Implied
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'street_direction_suffix': address_split[3],
-                'city': address_split[4],
-                'state': address_split[5],
-                'zip_code': address_split[6],
-                'country': 'US' # Implied
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE4"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'street_direction_suffix': address_split[3],
-                'city': address_split[4],
-                'state': address_split[5],
-                'zip_code': address_split[6],
-                'country': 'US' # Implied
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "CITY", "STATE", "ZIPCODE"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'street_direction_suffix': address_split[3],
-                'city': address_split[4] + ' ' + address_split[5],
-                'state': address_split[6],
-                'zip_code': address_split[7],
-                'country': 'US' # Implied
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "CITY", "STATE", "ZIPCODE4"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'street_direction_suffix': address_split[3],
-                'city': address_split[4] + ' ' + address_split[5],
-                'state': address_split[6],
-                'zip_code': address_split[7],
-                'country': 'US' # Implied
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE4", "COUNTRY"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'city': address_split[3],
-                'state': address_split[4],
-                'zip_code': address_split[5],
-                'country': address_split[6]
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE", "COUNTRY", "COUNTRY"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'city': address_split[3],
-                'state': address_split[4],
-                'zip_code': address_split[5],
-                'country': address_split[6] + address_split[7]
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE4", "COUNTRY", "COUNTRY"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'city': address_split[3],
-                'state': address_split[4],
-                'zip_code': address_split[5],
-                'country': address_split[6] + address_split[7]
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE", "COUNTRY", "COUNTRY"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'street_direction': address_split[3],
-                'city': address_split[4],
-                'state': address_split[5],
-                'zip_code': address_split[6],
-                'country': address_split[7] + ' ' + address_split[8]
-            }
-            return address_parts
-        if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE4", "COUNTRY", "COUNTRY"]:
-            address_parts = {
-                'housenumber': address_split[0],
-                'street_name': address_split[1],
-                'street_type': address_split[2],
-                'street_direction': address_split[3],
-                'city': address_split[4],
-                'state': address_split[5],
-                'zip_code': address_split[6],
-                'country': address_split[7] + ' ' + address_split[8]
-            }
-            return address_parts
+        # if tagged_address == ["TEXT", "STREET_ABBREV_SUFFIX"]:
+        #     address_parts = {
+        #         'street_name': address_split[0],
+        #         'street_type': address_split[1]
+        #     }
+        # if tagged_address == ["TEXT", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"]:
+        #     address_parts = {
+        #         'street_name': address_split[0],
+        #         'street_type': address_split[1],
+        #         'street_direction_suffix': address_split[2]
+        #     }
+        #     return address_parts
+        # if tagged_address == ["STREET_DIRECTION", "TEXT", "STREET_ABBREV_SUFFIX"]:
+        #     address_parts = {
+        #         'street_direction_prefix': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'street_direction_suffix': address_split[3]
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2]
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'street_direction_suffix': address_split[3]
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET_DIRECTION", "STREET", "STREET_ABBREV_SUFFIX"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_direction_prefix': address_split[1],
+        #         'street_name': address_split[2],
+        #         'street_type': address_split[3]
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "PROVINCE CITY", "POSTAL_CODE_FIRST", "POSTAL_CODE_SECOND"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'city': address_split[3],
+        #         'province': address_split[4],
+        #         'postal_code': address_split[5] + " " + address_split[6],
+        #         'country': 'CA' # Implied
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'city': address_split[3],
+        #         'state': address_split[4],
+        #         'country': 'US' # Implied
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "PROVINCE"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'city': address_split[3],
+        #         'province': address_split[4],
+        #         'country': 'CA' # Implied
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'city': address_split[3],
+        #         'state': address_split[4],
+        #         'zip_code': address_split[5],
+        #         'country': 'US' # Implied
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE4"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'city': address_split[3],
+        #         'state': address_split[4],
+        #         'zip_code': address_split[5],
+        #         'country': 'US' # Implied
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'street_direction_suffix': address_split[3],
+        #         'city': address_split[4],
+        #         'state': address_split[5],
+        #         'zip_code': address_split[6],
+        #         'country': 'US' # Implied
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE4"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'street_direction_suffix': address_split[3],
+        #         'city': address_split[4],
+        #         'state': address_split[5],
+        #         'zip_code': address_split[6],
+        #         'country': 'US' # Implied
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "CITY", "STATE", "ZIPCODE"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'street_direction_suffix': address_split[3],
+        #         'city': address_split[4] + ' ' + address_split[5],
+        #         'state': address_split[6],
+        #         'zip_code': address_split[7],
+        #         'country': 'US' # Implied
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "CITY", "STATE", "ZIPCODE4"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'street_direction_suffix': address_split[3],
+        #         'city': address_split[4] + ' ' + address_split[5],
+        #         'state': address_split[6],
+        #         'zip_code': address_split[7],
+        #         'country': 'US' # Implied
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE4", "COUNTRY"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'city': address_split[3],
+        #         'state': address_split[4],
+        #         'zip_code': address_split[5],
+        #         'country': address_split[6]
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE", "COUNTRY", "COUNTRY"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'city': address_split[3],
+        #         'state': address_split[4],
+        #         'zip_code': address_split[5],
+        #         'country': address_split[6] + address_split[7]
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE4", "COUNTRY", "COUNTRY"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'city': address_split[3],
+        #         'state': address_split[4],
+        #         'zip_code': address_split[5],
+        #         'country': address_split[6] + address_split[7]
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE", "COUNTRY", "COUNTRY"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'street_direction': address_split[3],
+        #         'city': address_split[4],
+        #         'state': address_split[5],
+        #         'zip_code': address_split[6],
+        #         'country': address_split[7] + ' ' + address_split[8]
+        #     }
+        #     return address_parts
+        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE4", "COUNTRY", "COUNTRY"]:
+        #     address_parts = {
+        #         'housenumber': address_split[0],
+        #         'street_name': address_split[1],
+        #         'street_type': address_split[2],
+        #         'street_direction': address_split[3],
+        #         'city': address_split[4],
+        #         'state': address_split[5],
+        #         'zip_code': address_split[6],
+        #         'country': address_split[7] + ' ' + address_split[8]
+        #     }
+        #     return address_parts
         return None
 
     def identify_unit_part_tags(self, address_split, tagged_address):
