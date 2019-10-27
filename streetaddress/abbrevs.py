@@ -283,6 +283,14 @@ CAN_ABBREVS_FR = {
     'terrasse': 'tsse',
 }
 
+# Additional street types
+EXTRA_STREET_ABBREVS = {
+    'ln': 'lane',
+    'circ': 'circle',
+    'crcl': 'circle',
+    'cr': 'crescent'
+}
+
 # Province or territory in Canada
 # Corresponding to first character of postal code
 CAN_POSTAL_CODE_FIRST_LETTER = {

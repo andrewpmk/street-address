@@ -12,8 +12,8 @@
 import re
 
 import Levenshtein
-from . import abbrevs
-
+from streetaddress import abbrevs
+#from streetaddress import abbrevs
 
 # import six
 
@@ -264,8 +264,10 @@ class StreetAddress():
         self.street_types_can_fr = set(abbrevs.CAN_ABBREVS_FR.keys())
         self.street_abbrevs_can_fr = set(abbrevs.CAN_ABBREVS_FR.values())
 
+        self.street_abbrevs_extra = set(abbrevs.EXTRA_STREET_ABBREVS.keys())  # Stuff like Cr and Ln which is unofficial
+
         self.street_type_suffix = self.street_types_us | self.street_types_can_en
-        self.street_abbrev_suffix = self.street_abbrevs_us | self.street_abbrevs_can_en
+        self.street_abbrev_suffix = self.street_abbrevs_us | self.street_abbrevs_can_en | self.street_abbrevs_extra
         self.street_type_abbrev_suffix = self.street_type_suffix | self.street_abbrev_suffix
         self.street_type_abbrev_prefix = self.street_types_can_fr | self.street_abbrevs_can_fr
 
@@ -682,18 +684,36 @@ class StreetAddress():
     def remove_last_period(self, x: str) -> str:
         return re.sub("\.$","",x)
 
+    def exact_or_approximate_match(self, a: str, b: str, levenshtein):
+        if type(a) != str or type(b) != str:
+            raise ValueError
+        if levenshtein is not None and type(levenshtein) != float and type(levenshtein) != int:
+            raise ValueError
+        if levenshtein is None:
+            levenshtein = 1.0
+        if type(levenshtein) == int:
+            levenshtein = float(levenshtein)
+        if levenshtein > 1.0 or levenshtein < 0.0:
+            raise ValueError
+        if levenshtein == 1.0: # Exact match
+            return a == b
+        else:
+            ratio = Levenshtein.ratio(a, b)
+            return ratio >= levenshtein
+
     # Find word pattern in string
     # Returns tuple (start_index, end_index)
     # Where start_index is index of first word matched
     # End_index is index of last word matched
-    def find_word(self, pattern: str, string: str):
+    # Levenshtein = if not None use approximate string matching
+    def find_word(self, pattern: str, string: str, levenshtein = None):
         pattern_words = pattern.split(" ")  # Split pattern into words
         string_words = string.split(" ")  # Split string into words
         start_index = None
         end_index = None
         for i in range(len(string_words)):
             # Look for first word in pattern
-            if pattern_words[0] == string_words[i]:
+            if self.exact_or_approximate_match(pattern_words[0],string_words[i],levenshtein):
                 # If not enough words left in the string to possibly find the pattern
                 if len(string_words) < i + len(pattern_words):
                     break
@@ -703,7 +723,7 @@ class StreetAddress():
                 j = i + 1
                 # Look to see if remaining words in pattern are in string
                 while match and j - i < len(pattern_words):
-                    if pattern_words[j - i] != string_words[j]:
+                    if not self.exact_or_approximate_match(pattern_words[j - i],string_words[j],levenshtein):
                         match = False
                     if match:
                         end_index = j
@@ -712,8 +732,8 @@ class StreetAddress():
                     return (None, None)
         return (start_index, end_index)
 
-    def find_word_nocase(self, pattern: str, string: str):
-        return self.find_word(pattern.upper(), string.upper())
+    def find_word_nocase(self, pattern: str, string: str, levenshtein = None):
+        return self.find_word(pattern.upper(), string.upper(), levenshtein)
 
     # Find first and last word index corresponding to first and last character index of a match
     # Used for regular expression matching
@@ -726,8 +746,8 @@ class StreetAddress():
         end_index = start_index + string_match.count[" "]
         return (start_index, end_index)
 
-    def tag_if_found(self, pattern: str, string: str, tag: str, address_tags: list) -> list:
-        x = self.find_word_nocase(pattern, string)
+    def tag_if_found(self, pattern: str, string: str, tag: str, address_tags: list, levenshtein = None) -> list:
+        x = self.find_word_nocase(pattern, string, levenshtein)
         if x != (None, None):
             for j in range(x[0], x[1] + 1):
                 address_tags = self.add_tag(address_tags, tag, j)
@@ -820,13 +840,13 @@ class StreetAddress():
         address_tags = [None for i in range(len(address_split))]  # Initialize None array
         address_no_commas = self.remove_commas(address)
         for i in self.country_names:
-            address_tags = self.tag_if_found(i, address_no_commas, "COUNTRY", address_tags)
+            address_tags = self.tag_if_found(i, address_no_commas, "COUNTRY", address_tags, 0.8)
         for i in self.state_names_en | self.state_names_fr:
-            address_tags = self.tag_if_found(i, address_no_commas, "STATE", address_tags)
+            address_tags = self.tag_if_found(i, address_no_commas, "STATE", address_tags, 0.8)
         for i in self.province_names_en | self.province_names_fr:
-            address_tags = self.tag_if_found(i, address_no_commas, "PROVINCE", address_tags)
+            address_tags = self.tag_if_found(i, address_no_commas, "PROVINCE", address_tags, 0.8)
         for i in self.cities:
-            address_tags = self.tag_if_found(i, address_no_commas, "CITY", address_tags)
+            address_tags = self.tag_if_found(i, address_no_commas, "CITY", address_tags, 0.8)
         for i in range(len(address_split)):
             address_split_stripped = self.remove_last_comma(address_split[i])
             # Tag anything that contains alphabetic characters that is unrecognized as text
@@ -864,16 +884,20 @@ class StreetAddress():
                 address_tags = self.add_tag(address_tags, "STREET_ABBREV_PREFIX", i)
             if address_split_stripped.lower() in [x.lower() for x in self.street_directions]:
                 address_tags = self.add_tag(address_tags, "STREET_DIRECTION", i)
-            if address_split_stripped.lower() in [x.lower() for x in self.cities]:
-                address_tags = self.add_tag(address_tags, "CITY", i)
+            # Use approximate string matching for city
+            for j in [x.lower() for x in self.cities]:
+                if Levenshtein.ratio(address_split_stripped.lower(), j) >= 0.8:
+                    address_tags = self.add_tag(address_tags, "CITY", i)
+            #if address_split_stripped.lower() in [x.lower() for x in self.cities]:
+            #    address_tags = self.add_tag(address_tags, "CITY", i)
             if address_split_stripped.lower() in self.suite_type_set:
                 address_tags = self.add_tag(address_tags, "SUITE", i)
             if self.remove_last_period(address_split_stripped.lower()) == ("st" or "saint"):
                 address_tags = self.add_tag(address_tags,"SAINT",i)
             # Tag any weird characters that aren't recognized as TEXT
-            for i in range(len(address_tags)):
-                if address_tags[i] is None:
-                    address_tags[i] = "TEXT"
+            for j in range(len(address_tags)):
+                if address_tags[j] is None:
+                    address_tags[j] = "TEXT"
         # Substitute implausible combinations
         address_tags = self.substitute_list(["ZIPCODE","TEXT","STREET_ABBREV_SUFFIX"],["NUMBER","TEXT","STREET_ABBREV_SUFFIX"],address_tags)
         address_tags = self.substitute_list(["ZIPCODE","TEXT","STREET_ABBREV_SUFFIX SAINT"],["NUMBER","TEXT","STREET_ABBREV_SUFFIX"],address_tags)
@@ -886,14 +910,16 @@ class StreetAddress():
         address_tags = self.substitute_list(["NUMBER", "TEXT", "TEXT", "TEXT", "TEXT", "TEXT", "STREET_ABBREV_SUFFIX SAINT"],
                                             ["NUMBER", "TEXT", "TEXT", "TEXT", "TEXT", "TEXT", "STREET_ABBREV_SUFFIX"], address_tags)
         address_tags = self.substitute_list(["ZIPCODE","CITY","STREET_ABBREV_SUFFIX"],["NUMBER","TEXT","STREET_ABBREV_SUFFIX"],address_tags)
+        address_tags = self.substitute_list(["COUNTRY STATE","ZIPCODE"],["STATE","ZIPCODE"],address_tags)
+        address_tags = self.substitute_list(["COUNTRY STATE", "ZIPCODE4"], ["STATE", "ZIPCODE4"], address_tags)
         # Ontario, California
         address_tags = self.substitute_list(["PROVINCE CITY","COUNTRY STATE","ZIPCODE"],["CITY","STATE","ZIPCODE"],address_tags)
         address_tags = self.substitute_list(["PROVINCE CITY","COUNTRY STATE","ZIPCODE4"],["CITY","STATE","ZIPCODE4"],address_tags)
         # Ontario, Canada
         address_tags = self.substitute_list(["PROVINCE CITY","COUNTRY STATE","POSTAL_CODE_FIRST"],["CITY","STATE","POSTAL_CODE_FIRST"],address_tags)
         address_tags = self.substitute_list(["PROVINCE CITY","COUNTRY STATE","POSTAL_CODE_FIRST"],["CITY","STATE","POSTAL_CODE_FIRST"],address_tags)
-        address_tags = self.substitute_list(["PROVINCE CITY","POSTAL_CODE_FIRST"],["CITY","POSTAL_CODE_FIRST"],address_tags)
-        address_tags = self.substitute_list(["PROVINCE CITY","POSTAL_CODE_FIRST"],["CITY","POSTAL_CODE_FIRST"],address_tags)
+        address_tags = self.substitute_list(["PROVINCE CITY","POSTAL_CODE_FIRST"],["PROVINCE","POSTAL_CODE_FIRST"],address_tags)
+        address_tags = self.substitute_list(["PROVINCE CITY","POSTAL_CODE_FIRST"],["PROVINCE","POSTAL_CODE_FIRST"],address_tags)
         # New York NY
         address_tags = self.substitute_list(["STATE CITY","STATE CITY","STATE"],["CITY","CITY","STATE"],address_tags)
         # Washington DC
@@ -901,12 +927,12 @@ class StreetAddress():
         # Suite followed by 5-digit number that looks like a zip code
         address_tags = self.substitute_list(["SUITE","ZIPCODE"],["SUITE","NUMBER"],address_tags)
         # Weird street names like E St
-        address_tags = self.substitute_list(["NUMBER","STREET_DIRECTION","STREET_ABBREV_SUFFIX SAINT"],["NUMBER","STREET","STREET_ABBREV_SUFFIX"],address_tags)
+        address_tags = self.substitute_list(["NUMBER","STREET_DIRECTION","STREET_ABBREV_SUFFIX SAINT"],["NUMBER","TEXT","STREET_ABBREV_SUFFIX"],address_tags)
         # Weird street names like Avenue Rd
-        address_tags = self.substitute_list(["NUMBER","STREET_ABBREV_SUFFIX","STREET_ABBREV_SUFFIX"],["NUMBER","STREET","STREET_ABBREV_SUFFIX"],address_tags)
-        address_tags = self.substitute_list(["NUMBER","STREET_ABBREV_SUFFIX","STREET_ABBREV_SUFFIX SAINT"],["NUMBER","STREET","STREET_ABBREV_SUFFIX"],address_tags)
-        address_tags = self.substitute_list(["NUMBER","STREET_ABBREV_SUFFIX STREET_ABBREV_PREFIX","STREET_ABBREV_SUFFIX"],["NUMBER","STREET","STREET_ABBREV_SUFFIX"],address_tags)
-        address_tags = self.substitute_list(["NUMBER","STREET_ABBREV_SUFFIX STREET_ABBREV_PREFIX","STREET_ABBREV_SUFFIX SAINT"],["NUMBER","STREET","STREET_ABBREV_SUFFIX"],address_tags)
+        address_tags = self.substitute_list(["NUMBER","STREET_ABBREV_SUFFIX","STREET_ABBREV_SUFFIX"],["NUMBER","TEXT","STREET_ABBREV_SUFFIX"],address_tags)
+        address_tags = self.substitute_list(["NUMBER","STREET_ABBREV_SUFFIX","STREET_ABBREV_SUFFIX SAINT"],["NUMBER","TEXT","STREET_ABBREV_SUFFIX"],address_tags)
+        address_tags = self.substitute_list(["NUMBER","STREET_ABBREV_SUFFIX STREET_ABBREV_PREFIX","STREET_ABBREV_SUFFIX"],["NUMBER","TEXT","STREET_ABBREV_SUFFIX"],address_tags)
+        address_tags = self.substitute_list(["NUMBER","STREET_ABBREV_SUFFIX STREET_ABBREV_PREFIX","STREET_ABBREV_SUFFIX SAINT"],["NUMBER","TEXT","STREET_ABBREV_SUFFIX"],address_tags)
         # Street address suffix that could also be a prefix
         address_tags = self.substitute_list(["NUMBER","TEXT","STREET_ABBREV_SUFFIX STREET_ABBREV_PREFIX"],["NUMBER","TEXT","STREET_ABBREV_SUFFIX"],address_tags)
         return address_tags
@@ -1021,9 +1047,9 @@ class StreetAddress():
             'street_type': None,
             'street_direction_suffix': None
         }
-        housename_location = self.identify_tag_location(tagged_address, pattern_used, 'TEXT')
-        if housename_location != (None, None):
-            address_parts['housename'] = ' '.join(address_split[housename_location[0]:housename_location[1]+1])
+        #housename_location = self.identify_tag_location(tagged_address, pattern_used, 'TEXT')
+        #if housename_location != (None, None):
+        #    address_parts['housename'] = ' '.join(address_split[housename_location[0]:housename_location[1]+1])
         housenumber_location = self.identify_tag_location(tagged_address, pattern_used, 'NUMBER')
         if housenumber_location != (None, None):
             address_parts['housenumber'] = ' '.join(address_split[housenumber_location[0]:housenumber_location[1]+1])
@@ -1039,7 +1065,7 @@ class StreetAddress():
         street_type_fr_location = self.identify_tag_location(tagged_address, pattern_used, 'STREET_ABBREV_PREFIX')
         if street_type_fr_location != (None, None):
             address_parts['street_type_fr'] = ' '.join(address_split[street_type_fr_location[0]:street_type_fr_location[1]+1])
-        street_name_location = self.identify_tag_location(tagged_address, pattern_used, 'STREET')
+        street_name_location = self.identify_tag_location(tagged_address, pattern_used, 'TEXT')
         if street_name_location != (None, None):
             address_parts['street_name'] = ' '.join(address_split[street_name_location[0]:street_name_location[1]+1])
         street_type_en_location = self.identify_tag_location(tagged_address, pattern_used, 'STREET_ABBREV_SUFFIX')
@@ -1101,6 +1127,9 @@ class StreetAddress():
             postalcode_first = address_split[postalcode1_location[0]]
             postalcode_second = address_split[postalcode2_location[0]]
             address_parts['postal_code'] = postalcode_first + " " + postalcode_second  # Combine postal code
+        country_location = self.identify_tag_location(tagged_address, pattern_used, 'COUNTRY')
+        if country_location != (None, None):
+            address_parts['country'] = ' '.join(address_split[country_location[0]:country_location[1] + 1])
         return address_parts
 
     def parse_address_unit_part(self, address_split, tagged_address, pattern_used):
@@ -1119,7 +1148,7 @@ class StreetAddress():
         return address_parts
 
     def parse_address(self, address: str):
-        address_parts = {
+        address_parts_blank = {
             'housename': None,
             'housenumber': None,
             'street_direction_prefix': None,
@@ -1136,6 +1165,7 @@ class StreetAddress():
             'zip_code': None,
             'country': None
         }
+        address_parts = {}
         # Split by space
         address_no_commas = self.remove_commas(address)
         address_split = address_no_commas.split(" ")
@@ -1161,7 +1191,7 @@ class StreetAddress():
         # Combine 1st part and 2nd part
         if pattern_used_first_part or pattern_used_unit_part or pattern_used_second_part:
             if pattern_used_first_part:
-                address_parts = self.merge_dictionaries(address_parts, parsed_address_first_part)
+                address_parts = self.merge_dictionaries(address_parts_blank, parsed_address_first_part)
             if pattern_used_unit_part:
                 address_parts = self.merge_dictionaries(address_parts, parsed_address_unit_part)
             if pattern_used_second_part:
@@ -1172,12 +1202,10 @@ class StreetAddress():
             address_parts = {
                 'zip_code': address_split[0] + address_split[1]
             }
-            return address_parts
         if tagged_address == ["POSTAL_CODE_FIRST", "POSTAL_CODE_SECOND"]:
             address_parts = {
                 'postal_code': address_split[0] + address_split[1]
             }
-            return address_parts
         if tagged_address == ["CITY"]:
             address_parts = {
                 'city': address_split[0]
@@ -1194,208 +1222,9 @@ class StreetAddress():
             address_parts = {
                 'country': address_split[0]
             }
-        # if tagged_address == ["TEXT", "STREET_ABBREV_SUFFIX"]:
-        #     address_parts = {
-        #         'street_name': address_split[0],
-        #         'street_type': address_split[1]
-        #     }
-        # if tagged_address == ["TEXT", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"]:
-        #     address_parts = {
-        #         'street_name': address_split[0],
-        #         'street_type': address_split[1],
-        #         'street_direction_suffix': address_split[2]
-        #     }
-        #     return address_parts
-        # if tagged_address == ["STREET_DIRECTION", "TEXT", "STREET_ABBREV_SUFFIX"]:
-        #     address_parts = {
-        #         'street_direction_prefix': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'street_direction_suffix': address_split[3]
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2]
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'street_direction_suffix': address_split[3]
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET_DIRECTION", "STREET", "STREET_ABBREV_SUFFIX"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_direction_prefix': address_split[1],
-        #         'street_name': address_split[2],
-        #         'street_type': address_split[3]
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "PROVINCE CITY", "POSTAL_CODE_FIRST", "POSTAL_CODE_SECOND"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'city': address_split[3],
-        #         'province': address_split[4],
-        #         'postal_code': address_split[5] + " " + address_split[6],
-        #         'country': 'CA' # Implied
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'city': address_split[3],
-        #         'state': address_split[4],
-        #         'country': 'US' # Implied
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "PROVINCE"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'city': address_split[3],
-        #         'province': address_split[4],
-        #         'country': 'CA' # Implied
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'city': address_split[3],
-        #         'state': address_split[4],
-        #         'zip_code': address_split[5],
-        #         'country': 'US' # Implied
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE4"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'city': address_split[3],
-        #         'state': address_split[4],
-        #         'zip_code': address_split[5],
-        #         'country': 'US' # Implied
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'street_direction_suffix': address_split[3],
-        #         'city': address_split[4],
-        #         'state': address_split[5],
-        #         'zip_code': address_split[6],
-        #         'country': 'US' # Implied
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE4"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'street_direction_suffix': address_split[3],
-        #         'city': address_split[4],
-        #         'state': address_split[5],
-        #         'zip_code': address_split[6],
-        #         'country': 'US' # Implied
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "CITY", "STATE", "ZIPCODE"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'street_direction_suffix': address_split[3],
-        #         'city': address_split[4] + ' ' + address_split[5],
-        #         'state': address_split[6],
-        #         'zip_code': address_split[7],
-        #         'country': 'US' # Implied
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "CITY", "STATE", "ZIPCODE4"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'street_direction_suffix': address_split[3],
-        #         'city': address_split[4] + ' ' + address_split[5],
-        #         'state': address_split[6],
-        #         'zip_code': address_split[7],
-        #         'country': 'US' # Implied
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE4", "COUNTRY"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'city': address_split[3],
-        #         'state': address_split[4],
-        #         'zip_code': address_split[5],
-        #         'country': address_split[6]
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE", "COUNTRY", "COUNTRY"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'city': address_split[3],
-        #         'state': address_split[4],
-        #         'zip_code': address_split[5],
-        #         'country': address_split[6] + address_split[7]
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "CITY", "STATE", "ZIPCODE4", "COUNTRY", "COUNTRY"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'city': address_split[3],
-        #         'state': address_split[4],
-        #         'zip_code': address_split[5],
-        #         'country': address_split[6] + address_split[7]
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE", "COUNTRY", "COUNTRY"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'street_direction': address_split[3],
-        #         'city': address_split[4],
-        #         'state': address_split[5],
-        #         'zip_code': address_split[6],
-        #         'country': address_split[7] + ' ' + address_split[8]
-        #     }
-        #     return address_parts
-        # if tagged_address == ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION", "CITY", "STATE", "ZIPCODE4", "COUNTRY", "COUNTRY"]:
-        #     address_parts = {
-        #         'housenumber': address_split[0],
-        #         'street_name': address_split[1],
-        #         'street_type': address_split[2],
-        #         'street_direction': address_split[3],
-        #         'city': address_split[4],
-        #         'state': address_split[5],
-        #         'zip_code': address_split[6],
-        #         'country': address_split[7] + ' ' + address_split[8]
-        #     }
-        #     return address_parts
-        return None
+        # Add blank fields to address
+        address_parts = self.merge_dictionaries(address_parts_blank, address_parts)
+        return address_parts
 
     def identify_unit_part_tags(self, address_split, tagged_address):
         # Find something like "Suite 9"
@@ -1430,26 +1259,16 @@ class StreetAddress():
         # Try to isolate the first part of the address from the second part
         found_tag = False
         patterns = [
-            # ["TEXT", "NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"],
-            # ["TEXT", "NUMBER", "STREET_DIRECTION", "STREET", "STREET_ABBREV_SUFFIX"],
-            # ["TEXT", "NUMBER", "STREET", "STREET_ABBREV_SUFFIX"],
-            # ["TEXT", "NUMBER", "STREET_ABBREV_PREFIX", "STREET", "STREET_DIRECTION"],
-            # ["TEXT", "NUMBER", "STREET_ABBREV_PREFIX", "STREET"],
-            # ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"],
-            # ["NUMBER", "STREET_DIRECTION", "STREET", "STREET_ABBREV_SUFFIX"],
-            # ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX"],
-            # ["NUMBER", "STREET_ABBREV_PREFIX", "STREET", "STREET_DIRECTION"],
-            # ["NUMBER", "STREET_ABBREV_PREFIX", "STREET"]
-            ["TEXT", "NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"],
-            ["TEXT", "NUMBER", "STREET_DIRECTION", "STREET", "STREET_ABBREV_SUFFIX"],
-            ["TEXT", "NUMBER", "STREET", "STREET_ABBREV_SUFFIX"],
-            ["TEXT", "NUMBER", "STREET_ABBREV_PREFIX", "STREET", "STREET_DIRECTION"],
-            ["TEXT", "NUMBER", "STREET_ABBREV_PREFIX", "STREET"],
-            ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"],
-            ["NUMBER", "STREET_DIRECTION", "STREET", "STREET_ABBREV_SUFFIX"],
-            ["NUMBER", "STREET", "STREET_ABBREV_SUFFIX"],
-            ["NUMBER", "STREET_ABBREV_PREFIX", "STREET", "STREET_DIRECTION"],
-            ["NUMBER", "STREET_ABBREV_PREFIX", "STREET"]
+            ["TEXT", "NUMBER", "TEXT", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"],
+            ["TEXT", "NUMBER", "STREET_DIRECTION", "TEXT", "STREET_ABBREV_SUFFIX"],
+            ["TEXT", "NUMBER", "TEXT", "STREET_ABBREV_SUFFIX"],
+            ["TEXT", "NUMBER", "STREET_ABBREV_PREFIX", "TEXT", "STREET_DIRECTION"],
+            ["TEXT", "NUMBER", "STREET_ABBREV_PREFIX", "TEXT"],
+            ["NUMBER", "TEXT", "STREET_ABBREV_SUFFIX", "STREET_DIRECTION"],
+            ["NUMBER", "STREET_DIRECTION", "TEXT", "STREET_ABBREV_SUFFIX"],
+            ["NUMBER", "TEXT", "STREET_ABBREV_SUFFIX"],
+            ["NUMBER", "STREET_ABBREV_PREFIX", "TEXT", "STREET_DIRECTION"],
+            ["NUMBER", "STREET_ABBREV_PREFIX", "TEXT"]
         ]
         step = 0
         pattern_used_first_part = None
